@@ -3,15 +3,11 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>🌌 Genesis AI Chat</title>
+    <title>🌌 Genesis AI</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             background: #eef2f7;
             padding: 20px;
             color: #333;
@@ -31,20 +27,21 @@
             background: white;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             margin-bottom: 15px;
+            display: flex;
+            flex-direction: column;
         }
         .msg {
-            padding: 8px 12px;
-            margin: 6px 0;
-            border-radius: 16px;
-            max-width: 80%;
+            padding: 10px 14px;
+            margin: 4px 0;
+            border-radius: 18px;
+            max-width: 75%;
             word-wrap: break-word;
-            font-size: 14px;
+            font-size: 14.5px;
         }
         .user {
             background: #007bff;
             color: white;
             align-self: flex-end;
-            margin-left: auto;
         }
         .ai {
             background: #1a73e8;
@@ -54,11 +51,11 @@
         .system {
             background: #6c757d;
             color: white;
-            font-style: italic;
             font-size: 12px;
             text-align: center;
-            max-width: 100%;
-            margin: 10px auto;
+            margin: 8px auto;
+            max-width: 90%;
+            font-style: italic;
         }
         #chat-container {
             display: flex;
@@ -85,11 +82,8 @@
             border: none;
             border-radius: 8px;
             cursor: pointer;
-            font-size: 15px;
         }
-        #send-btn:hover {
-            background: #218838;
-        }
+        #send-btn:hover { background: #218838; }
         .tip {
             font-size: 12px;
             color: #666;
@@ -100,32 +94,31 @@
 </head>
 <body>
     <div id="chat-container">
-        <h1>🌌 Genesis AI</h1>
+        <h1>🌌 Genesis AI Chat</h1>
         <div id="chat"></div>
         <div class="input-area">
             <input type="text" id="message" placeholder="Ketik pesan... (panggil 'genesis' untuk AI)" autofocus />
             <button id="send-btn" onclick="sendMessage()">Kirim</button>
         </div>
-        <p class="tip">💡 Ketik "genesis halo" agar AI merespons</p>
+        <p class="tip">💡 Contoh: "genesis jelaskan AI"</p>
     </div>
 
     <script>
-        // 🔌 WebSocket
-        const ws = new WebSocket("wss://" + window.location.host + "/ws/1");
+        // 🔌 WebSocket (otomatis pakai ws:// atau wss://)
+        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+        const ws = new WebSocket(`${protocol}://${window.location.host}/ws/1`);
         const chat = document.getElementById("chat");
         const input = document.getElementById("message");
 
-        // 📰 Tambah pesan ke chat
         function addMessage(text, type) {
             const msg = document.createElement("div");
             msg.className = `msg ${type}`;
             msg.textContent = text;
             chat.appendChild(msg);
-            chat.scrollTop = chat.scrollHeight; // Scroll ke bawah
+            chat.scrollTop = chat.scrollHeight;
         }
 
-        // 📡 Saat ada pesan masuk
-        ws.onmessage = function(event) {
+        ws.onmessage = (event) => {
             const data = event.data;
             if (data.startsWith("Genesis:")) {
                 addMessage(data, "ai");
@@ -136,26 +129,33 @@
             }
         };
 
-        // 📤 Kirim pesan
+        ws.onerror = (e) => {
+            addMessage("❌ Gagal koneksi ke server.", "system");
+            console.error("WebSocket error:", e);
+        };
+
+        ws.onclose = () => {
+            addMessage("🔌 Koneksi ditutup.", "system");
+        };
+
         function sendMessage() {
             const text = input.value.trim();
-            if (text) {
+            if (text && ws.readyState === WebSocket.OPEN) {
                 ws.send(text);
                 input.value = "";
+            } else if (!ws.OPEN) {
+                addMessage("⚠️ Tidak terhubung.", "system");
             }
         }
 
-        // 🎯 Fokus input saat halaman buka
-        window.onload = () => input.focus();
-
-        // ↵ Enter untuk kirim
         input.addEventListener("keypress", (e) => {
             if (e.key === "Enter") sendMessage();
         });
 
-        // 💔 WebSocket error
-        ws.onerror = () => addMessage("⚠️ Koneksi gagal. Coba refresh.", "system");
-        ws.onclose = () => addMessage("🔌 Terputus dari server.", "system");
+        window.onload = () => {
+            addMessage("🌐 Terhubung ke server...", "system");
+            input.focus();
+        };
     </script>
 </body>
 </html>
