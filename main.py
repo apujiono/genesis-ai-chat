@@ -1,28 +1,16 @@
-from fastapi import FastAPI, Request, WebSocket
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
-import requests
+from transformers import pipeline
 import os
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
-# ✅ Gunakan model yang selalu bisa diakses
-MODEL_NAME = "gpt2"
-HF_API_TOKEN = os.getenv("HF_API_TOKEN", "hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx")
-API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
-headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+# 🧠 Load AI Genesis (offline)
+print("🚀 Memuat model AI Genesis (gpt2)...")
+generator = pipeline("text-generation", model="gpt2", max_new_tokens=64)
 
-def query(payload):
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
-        if response.status_code != 200:
-            return f"❌ Error {response.status_code}: {response.text}"
-        result = response.json()
-        print("Raw:", result)
-        return result[0].get("generated_text", "") if isinstance(result, list) else result.get("generated_text", "")
-    except Exception as e:
-        return f"Error: {str(e)}"
-
+# Daftar koneksi WebSocket
 active_connections = []
 
 @app.get("/")
@@ -38,28 +26,35 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         while True:
             user_input = await websocket.receive_text()
 
+            # Jika user panggil "genesis", AI merespons
             if "genesis" in user_input.lower():
+                # Format prompt
                 prompt = f"User: {user_input}\nGenesis:"
+                
+                # Generate respons
+                try:
+                    response = generator(prompt, max_length=128, num_return_sequences=1)[0]['generated_text']
+                    
+                    # Ambil bagian setelah "Genesis:"
+                    if "Genesis:" in response:
+                        ai_text = response.split("Genesis:")[1].strip()
+                    else:
+                        ai_text = response.strip()
 
-                response_text = query({
-                    "inputs": prompt,
-                    "parameters": {
-                        "max_new_tokens": 64,
-                        "temperature": 0.8,
-                        "return_full_text": False
-                    }
-                })
-
-                # Bersihkan respons
-                if "Genesis:" in response_text:
-                    response_text = response_text.split("Genesis:")[1]
-                clean = response_text.split(". ")[0] + "."
-                clean = clean.strip()
-
-                ai_msg = f"Genesis: {clean}"
-                for conn in active_connections:
-                    await conn.send_text(ai_msg)
+                    # Potong kalimat pertama saja
+                    final_response = ai_text.split(". ")[0] + "."
+                    
+                    ai_msg = f"Genesis: {final_response}"
+                    
+                    # Kirim ke semua user
+                    for conn in active_connections:
+                        await conn.send_text(ai_msg)
+                        
+                except Exception as e:
+                    await websocket.send_text("🤖 Maaf, AI sedang sibuk.")
+                    print("Error generation:", e)
             else:
+                # Broadcast pesan user
                 user_msg = f"User {client_id}: {user_input}"
                 for conn in active_connections:
                     await conn.send_text(user_msg)
@@ -67,3 +62,5 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     except WebSocketDisconnect:
         if websocket in active_connections:
             active_connections.remove(websocket)
+    except Exception as e:
+        print("WebSocket error:", e)
