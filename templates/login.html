@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Genesis AI</title>
+    <style>
+        body { font-family: Arial; text-align: center; padding: 50px; background: #f0f2f5; }
+        .box { max-width: 400px; margin: 0 auto; padding: 30px; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        input { width: 80%; padding: 12px; margin: 10px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 16px; }
+        button { padding: 12px 24px; background: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>🔐 Masuk ke Genesis AI</h2>
+        <input type="text" id="username" placeholder="Masukkan username" />
+        <br/>
+        <button onclick="login()">Masuk ke Chat</button>
+    </div>
+
+    <script>
+        function login() {
+            const username = document.getElementById("username").value.trim();
+            if (username) {
+                // Simpan username di sessionStorage
+                sessionStorage.setItem("username", username);
+                window.location.href = "/";
+            } else {
+                alert("Username tidak boleh kosong!");
+            }
+        }
+    </script>
+</body>
+</html>
