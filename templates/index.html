@@ -14,8 +14,14 @@
         }
         h1 {
             text-align: center;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             color: #1a3b6d;
+        }
+        .subtitle {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 20px;
         }
         #chat {
             width: 100%;
@@ -47,15 +53,6 @@
             background: #1a73e8;
             color: white;
             align-self: flex-start;
-        }
-        .system {
-            background: #6c757d;
-            color: white;
-            font-size: 12px;
-            text-align: center;
-            margin: 8px auto;
-            max-width: 90%;
-            font-style: italic;
         }
         #chat-container {
             display: flex;
@@ -90,23 +87,36 @@
             text-align: center;
             margin-top: 10px;
         }
+        .logout {
+            text-align: center;
+            font-size: 12px;
+        }
+        .logout a {
+            color: #dc3545;
+            text-decoration: none;
+        }
     </style>
 </head>
 <body>
     <div id="chat-container">
-        <h1>🌌 Genesis AI Chat</h1>
+        <h1>🌌 Genesis AI</h1>
+        <p class="subtitle" id="user-label">Loading...</p>
         <div id="chat"></div>
         <div class="input-area">
-            <input type="text" id="message" placeholder="Ketik pesan... (panggil 'genesis' untuk AI)" autofocus />
+            <input type="text" id="message" placeholder="Ketik pesan... (panggil 'genesis')" autofocus />
             <button id="send-btn" onclick="sendMessage()">Kirim</button>
         </div>
-        <p class="tip">💡 Contoh: "genesis jelaskan black hole"</p>
+        <p class="tip">💡 Contoh: "genesis apa kabar?"</p>
+        <p class="logout"><a href="/login">Logout</a></p>
     </div>
 
     <script>
-        // 🔌 WebSocket: auto ws/wss
+        // Ambil username dari sessionStorage
+        const username = sessionStorage.getItem("username") || "User";
+        document.getElementById("user-label").textContent = `Halo, ${username}!`;
+
         const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-        const ws = new WebSocket(`${protocol}://${window.location.host}/ws/1`);
+        const ws = new WebSocket(`${protocol}://${window.location.host}/ws/${encodeURIComponent(username)}`);
         const chat = document.getElementById("chat");
         const input = document.getElementById("message");
 
@@ -122,29 +132,19 @@
             const data = event.data;
             if (data.startsWith("Genesis:")) {
                 addMessage(data, "ai");
-            } else if (data.includes("User")) {
-                addMessage(data, "user");
             } else {
-                addMessage(data, "system");
+                addMessage(data, "user");
             }
         };
 
-        ws.onerror = (e) => {
-            addMessage("❌ Gagal koneksi ke server.", "system");
-            console.error("WebSocket error:", e);
-        };
-
-        ws.onclose = () => {
-            addMessage("🔌 Koneksi ditutup.", "system");
-        };
+        ws.onerror = () => addMessage("❌ Gagal koneksi.", "system");
+        ws.onclose = () => addMessage("🔌 Terputus.", "system");
 
         function sendMessage() {
             const text = input.value.trim();
             if (text && ws.readyState === WebSocket.OPEN) {
                 ws.send(text);
                 input.value = "";
-            } else if (ws.readyState !== WebSocket.OPEN) {
-                addMessage("⚠️ Tidak terhubung.", "system");
             }
         }
 
@@ -153,7 +153,7 @@
         });
 
         window.onload = () => {
-            addMessage("🌐 Terhubung ke server...", "system");
+            addMessage("🤖 Genesis siap membantu!", "ai");
             input.focus();
         };
     </script>
