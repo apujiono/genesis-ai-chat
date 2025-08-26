@@ -16,6 +16,10 @@ API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
 
 headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 def query(payload):
     try:
         response = requests.post(API_URL, headers=headers, json=payload)
