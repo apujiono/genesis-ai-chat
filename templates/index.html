@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>💬 Genesis AI Chat</title>
+    <title>💬 Genesis Chat (AI Mati)</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f4f6f8; }
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f7f9fc; }
         #chat { height: 400px; overflow-y: scroll; border: 1px solid #ddd; padding: 10px; margin-bottom: 10px; background: white; border-radius: 8px; }
         #message { width: 70%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 10px 15px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        .msg { margin: 5px 0; padding: 5px; border-bottom: 1px dashed #eee; }
-        .ai { font-weight: bold; color: #1a73e8; }
+        button { padding: 10px 15px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #218838; }
+        .msg { margin: 5px 0; padding: 4px; border-bottom: 1px dashed #eee; }
     </style>
 </head>
 <body>
-    <h1>🚀 Genesis AI Chat</h1>
+    <h1>🟢 Genesis Chat (AI Dimatikan Sementara)</h1>
+    <p><small>Fitur: Chat antar user (real-time). AI belum aktif.</small></p>
     <div id="chat"></div>
-    <input type="text" id="message" placeholder="Ketik pesan... (panggil 'Genesis:' untuk AI)" />
+    <input type="text" id="message" placeholder="Ketik pesan..." />
     <button onclick="sendMessage()">Kirim</button>
 
     <script>
@@ -26,9 +26,6 @@
         ws.onmessage = function(event) {
             const msg = document.createElement("div");
             msg.className = "msg";
-            if (event.data.startsWith("Genesis")) {
-                msg.classList.add("ai");
-            }
             msg.textContent = event.data;
             chat.appendChild(msg);
             chat.scrollTop = chat.scrollHeight;
