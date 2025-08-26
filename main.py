@@ -9,24 +9,37 @@ templates = Jinja2Templates(directory="templates")
 # 🤗 Hugging Face Settings
 HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 if not HF_API_TOKEN:
-    print("⚠️ HF_API_TOKEN tidak ditemukan! AI tidak akan jalan.")
+    print("❌ ERROR: HF_API_TOKEN tidak di-set di environment!")
 
-MODEL_NAME = "microsoft/Phi-3-mini-4k-instruct"
+MODEL_NAME = "HuggingFaceH4/zephyr-7b-beta"
 API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
 
 headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
 
 def query(payload):
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=30)
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=60)
+        
         if response.status_code == 503:
-            return "🤖 Genesis sedang memuat model... Coba sebentar lagi."
+            return "🤖 Model sedang loading... Tunggu 10-20 detik."
+        elif response.status_code != 200:
+            return f"❌ Error {response.status_code}: {response.text}"
+
         result = response.json()
-        if isinstance(result, list):
-            return result[0].get("generated_text", "")
-        return result.get("generated_text", "")
+        print("🔹 Raw Hugging Face response:", result)  # Debug log
+
+        # Ambil teks dari hasil
+        if isinstance(result, list) and len(result) > 0:
+            text = result[0].get("generated_text", "")
+        elif isinstance(result, dict):
+            text = result.get("generated_text", "")
+        else:
+            text = str(result)
+
+        return text.strip()
     except Exception as e:
-        return f"🤖 Maaf, terjadi error: {str(e)}"
+        print("🚨 Error query:", e)
+        return f"🤖 Error koneksi: {str(e)}"
 
 # Daftar koneksi aktif
 active_connections = []
@@ -40,37 +53,58 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await websocket.accept()
     active_connections.append(websocket)
 
-    # Konteks percakapan
-    conversation = "You are Genesis, a friendly and helpful AI assistant. Keep answers short and warm."
+    # Konteks percakapan (untuk memberi konteks ke AI)
+    conversation = (
+        "<|system|>\n"
+        "Kamu adalah Genesis, asisten AI yang ramah, cerdas, dan membantu. "
+        "Jawab dengan singkat, jelas, dan hangat.<|end|>"
+    )
 
     try:
         while True:
-            data = await websocket.receive_text()
+            user_input = await websocket.receive_text()
 
-            # Tambahkan ke konteks
-            conversation += f"\nUser: {data}"
+            # Tambahkan ke riwayat
+            conversation += f"\n<|user|>\n{user_input}<|end|>"
 
-            # Jika user panggil "genesis", AI merespons
-            if "genesis" in data.lower():
-                prompt = conversation + "\nAssistant:"
+            # Cek: apakah user panggil "genesis"
+            if "genesis" in user_input.lower():
+                # Format prompt sesuai Zephyr
+                prompt = conversation + "\n<|assistant|>"
+
+                # Kirim ke Hugging Face
                 response_text = query({
                     "inputs": prompt,
                     "parameters": {
-                        "max_new_tokens": 128,
+                        "max_new_tokens": 150,
                         "temperature": 0.7,
+                        "top_p": 0.9,
+                        "do_sample": True,
                         "return_full_text": False
                     }
                 })
-                ai_response = response_text.strip()
-                final_msg = f"Genesis: {ai_response}"
-                conversation += f"\nAssistant: {ai_response}"
 
-                # Kirim ke semua
+                # Bersihkan output: ambil setelah <|assistant|> dan sebelum <|end|>
+                if "<|assistant|>" in response_text:
+                    response_text = response_text.split("<|assistant|>")[1]
+                if "<|end|>" in response_text:
+                    response_text = response_text.split("<|end|>")[0]
+                response_text = response_text.strip()
+
+                # Jika hasil masih kosong
+                if not response_text:
+                    response_text = "Maaf, aku tidak bisa merespons saat ini."
+
+                # Format respons akhir
+                ai_msg = f"Genesis: {response_text}"
+                conversation += f"\n<|assistant|>\n{response_text}<|end|>"
+
+                # Kirim ke semua user
                 for conn in active_connections:
-                    await conn.send_text(final_msg)
+                    await conn.send_text(ai_msg)
             else:
                 # Broadcast pesan user
-                user_msg = f"User {client_id}: {data}"
+                user_msg = f"User {client_id}: {user_input}"
                 for conn in active_connections:
                     await conn.send_text(user_msg)
 
@@ -78,8 +112,8 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         if websocket in active_connections:
             active_connections.remove(websocket)
     except Exception as e:
-        print(f"Error: {e}")
+        print("WebSocket error:", e)
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "ai": "ready"}
