@@ -11,7 +11,7 @@ HF_API_TOKEN = os.getenv("HF_API_TOKEN")
 if not HF_API_TOKEN:
     raise ValueError("HF_API_TOKEN tidak ditemukan! Harap set di environment variable.")
 
-MODEL_NAME = "HuggingFaceH4/zephyr-7b-beta"
+MODEL_NAME = "microsoft/Phi-3-mini-4k-instruct"
 API_URL = f"https://api-inference.huggingface.co/models/{MODEL_NAME}"
 
 headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
